@@ -1,19 +1,24 @@
 import { Fragment } from 'react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { EllipsisVerticalIcon } from '@heroicons/react/20/solid'
-import { deleteProject, getProjects } from "@/api/ProjectAPI"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link } from "react-router-dom"
-import { toast } from 'react-toastify'
+import { getProjects } from "@/api/ProjectAPI"
+import { useQuery } from "@tanstack/react-query"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from '@/hooks/useAuth'
 import { isManager } from '@/utils/polices'
+import DeleteProjectModal from '@/components/projects/DeleteProjectModal'
 
 const DashboardViews = () => {
 
+    const navigate = useNavigate()
+    const location = useLocation()
+
+    
     //para hacer la validacion del usuario y del team dependiendo sus acciones aqui hayq ue traer el user que esta logeado
     //este custom hook hace la peticion al api y verifica si esta logueado, si no esta logueado redireccionamos al login
     //se coloca aqui por que esta es la pagina raiz, por que aqui tenemos el outle y aqui se renderiza lo de cualquier otra pagina
     //con esto aseguramos que si no hay datos no cargamos nada y redireccionamos a login
+    //aqui se renombro data: user, isLoading: authLoading, data a user y isLoading a authLoading, para que no choquen los nombres del useAuth y el useQuery
     const { data: user, isLoading: authLoading } = useAuth()
 
 
@@ -23,21 +28,6 @@ const DashboardViews = () => {
     const { data, isLoading } = useQuery({
         queryKey: ['projects'],
         queryFn: getProjects
-    })
-
-    //Para refrescar los datos y traiga dotos nuevos
-    const queryClient = useQueryClient()
-
-    //Agregando la mutacion de @tanstack/react-query, que es la que se conecta con la funcion que hace la peticion via axios
-    const { mutate } = useMutation({
-        mutationFn: deleteProject,
-        onError: (error) => {
-            toast.error(error.message)
-        },
-        onSuccess: (data) => {
-            toast.success(data)
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
-        }
     })
 
 
@@ -133,7 +123,7 @@ const DashboardViews = () => {
                                                         <button
                                                             type='button'
                                                             className='block px-3 py-1 text-sm leading-6 text-red-500 hover:cursor-pointer'
-                                                            onClick={() => mutate(project._id)}
+                                                            onClick={() => navigate( location.pathname + `?deleteProject=${project._id}`)}
                                                         >
                                                             Eliminar Proyecto
                                                         </button>
@@ -163,6 +153,8 @@ const DashboardViews = () => {
                     </Link>
                 </p>
             )}
+
+            <DeleteProjectModal />
         </>
 
     )
