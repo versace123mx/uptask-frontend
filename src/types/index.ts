@@ -74,9 +74,16 @@ export const taskShema = z.object({
     )
 })
 
+export const taskProjectSchema = taskShema.pick({
+    _id: true,
+    name: true,
+    description: true,
+    status: true
+})
+
 export type Task = z.infer<typeof taskShema>
 export type TaskFormData = Pick<Task, 'name' | 'description'>
-
+export type TaskProject = z.infer<typeof taskProjectSchema>
 
 
 
@@ -86,7 +93,9 @@ export const projectSchema = z.object({
     projectName: z.string(),
     clientenName: z.string(),
     description: z.string(),
-    manger: z.string(userSchema.pick({_id:true})),
+    manger: z.string(),
+    task: z.array(taskProjectSchema),
+    team: z.array(z.string())
 })
 
 //la respuesta del API es un array y no un objeto como projectSchema a un que trae sus datos como projectSchema pero devuelve un array de objetos por eso se crea un nuevo schema
@@ -99,6 +108,12 @@ export const dashboardProjectSchema = z.array(
         manger:true
     })
 )
+
+export const editProjectSchema = projectSchema.pick({
+    projectName: true,
+    clientenName: true,
+    description: true,
+})
 
 export type Project = z.infer<typeof projectSchema>
 export type ProjectFormData = Pick<Project, 'clientenName' | 'description' | 'projectName'>

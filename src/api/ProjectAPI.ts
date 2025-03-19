@@ -1,5 +1,5 @@
 import api from "@/lib/axios"
-import { dashboardProjectSchema, Project, ProjectFormData } from "../types"
+import { dashboardProjectSchema, editProjectSchema, Project, ProjectFormData, projectSchema } from "../types"
 import { isAxiosError } from "axios"
 
 //ya solo se manda a llamar a api por que esa constante ya llama a axios en la carpeta lib
@@ -56,7 +56,10 @@ export const getProjects = async () => {
 export const getProjectById = async (id:Project['_id']) => {
     try {
         const { data } = await api(`/project/${id}`)
-        return data
+        const response = editProjectSchema.safeParse(data)
+        if(response.success){
+            return response.data
+        }
 
     } catch (error) {
         if(isAxiosError(error) && error.response){
@@ -65,6 +68,21 @@ export const getProjectById = async (id:Project['_id']) => {
     }
 }
 
+export const getFullProject = async (id:Project['_id']) => {
+    try {
+        const { data } = await api(`/project/${id}`)
+        const response = projectSchema.safeParse(data)
+        if(response.success){
+            console.log(response.data)
+            return response.data
+        }
+
+    } catch (error) {
+        if(isAxiosError(error) && error.response){
+            throw new Error(error.response.data.error)
+        }
+    }
+}
 
 
 type ProjectAPIType = {
