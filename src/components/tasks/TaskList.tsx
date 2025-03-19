@@ -1,8 +1,12 @@
-import { DndContext } from '@dnd-kit/core'
-import { Task } from "@/types/index"
+import { DndContext, DragEndEvent } from '@dnd-kit/core'
+import { Task, TaskStatus } from "@/types/index"
 import TaskCard from "./TaskCard"
 import { statusTranslations } from "@/locales/es"
 import DropTask from "./DropTask"
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'react-toastify'
+import { useParams } from 'react-router-dom'
+import { updateStatus } from '@/api/TaskAPI'
 
 type TaskListProps = {
     tasks: Task[]
@@ -32,6 +36,25 @@ const statusColorTranslations: { [key: string]: string } = {
 
 const TaskList = ({ tasks, canEdit }: TaskListProps) => {
 
+    const params = useParams()
+    const projectId = params.projectsId!
+
+    //Aqui aplicaremos la mutacion para el cambio de estatus desde el select
+        //Para refrescar los datos y traiga dotos nuevos
+        const queryClient = useQueryClient()
+    
+        //Agregando la mutacion de @tanstack/react-query, que es la que se conecta con la funcion que hace la peticion via axios
+        const { mutate } = useMutation({
+            mutationFn: updateStatus,
+            onError: (error) => {
+                toast.error(error.message)
+            },
+            onSuccess: (data) => {
+                toast.success(data)
+                queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+            }
+        })
+        
     //Este es el codigo que agrupa las tareas
     const groupedTasks = tasks.reduce((acc, task) => {
         let currentGroup = acc[task.status] ? [...acc[task.status]] : [];
@@ -39,7 +62,32 @@ const TaskList = ({ tasks, canEdit }: TaskListProps) => {
         return { ...acc, [task.status]: currentGroup };
     }, initialStatusGroups);
 
-    //console.log(groupedTasks)
+    const handleDragEnd = (e: DragEndEvent) => {
+        const { over, active } = e
+
+        if(over && over.id){
+            const taskId = active.id.toString()
+            const status = over.id as TaskStatus
+
+            mutate({projectId, taskId, status})
+
+            queryClient.setQueryData(['project', projectId],(prevData) => {
+                const updatedTasks = prevData.tasks.map((task:Task) => {
+                    if(task._id === taskId){
+                        return {
+                            ...task,
+                            status
+                        }
+                    }
+                    return task
+                })
+                return {
+                    ...prevData,
+                    task: updatedTasks
+                }
+            })
+        }
+    }
 
     return (
         <>
@@ -47,7 +95,7 @@ const TaskList = ({ tasks, canEdit }: TaskListProps) => {
 
             <div className='flex gap-5 overflow-x-scroll 2xl:overflow-auto pb-32'>
 
-                <DndContext>
+                <DndContext onDragEnd={handleDragEnd}>
                     {Object.entries(groupedTasks).map(([status, tasks]) => (
                         <div key={status} className='min-w-[300px] 2xl:min-w-0 2xl:w-1/5'>
 
@@ -55,7 +103,8 @@ const TaskList = ({ tasks, canEdit }: TaskListProps) => {
                                 {statusTranslations[status]}
                             </h3>
 
-                            <DropTask />
+                            <DropTask status={status} />
+
                             <ul className='mt-5 space-y-5'>
                                 {tasks.length === 0 ? (
                                     <li className="text-gray-500 text-center pt-3">No Hay tareas</li>
